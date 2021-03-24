@@ -10,10 +10,9 @@ from sys import exit
 def log_price(msg):
     ''' define how to process incoming WebSocket messages '''
 
-    if msg['e'] != 'error':
-        with open('{}.log'.format(msg['s']), 'a') as log_file:
-            log_file.write(dumps(msg) + '\n')
-            log_file.close()
+    with open('price_logs/{}.log'.format(msg['s']), 'a') as log_file:
+        log_file.write(dumps(msg) + '\n')
+        log_file.close()
 
 
 class Prices:
@@ -80,3 +79,12 @@ if __name__ == '__main__':
 
     prices = Prices(list_of_coins=coin_list, binance_client=client_export)
     prices.get_prices()
+
+    should_terminate = False
+
+    while not should_terminate:
+        command = input("type STOP to end program:\n")
+        if command == "STOP":
+            should_terminate = True
+
+    print("program stopped...")

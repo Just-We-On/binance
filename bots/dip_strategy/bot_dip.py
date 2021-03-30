@@ -9,7 +9,7 @@ class BotDip:
 
     LIFE_SPAN_ON_BUY = 10
 
-    def __init__(self, curr_price: float, pct_change: float) -> None:
+    def __init__(self, curr_price: float, pct_change: float, event_time: int) -> None:
         self.__activated_price: float = round(curr_price, 5)
         self.__price_at_dip: float = round(curr_price * (1 - (pct_change / 100)), 5)
         self.__stop_loss: float = round(self.__price_at_dip * (1 - (pct_change / 100)), 5)
@@ -17,7 +17,18 @@ class BotDip:
         self.__has_bought_coin: bool = False
 
         self.__life_span = 1
-        self.__status = "INACTIVE"
+        self.__status = BotDip.STATUS_INACTIVE
+        self.should_destroy = False
+
+        self.__event_time = event_time
+
+        self.__buy_price = None
+        self.__buy_time = None
+        self.__buy_sell_info = None
+
+    @property
+    def get_transaction_info(self):
+        return self.__buy_sell_info
 
     @property
     def get_life_span(self) -> int:
@@ -39,34 +50,54 @@ class BotDip:
     def get_status(self) -> str:
         return self.__status
 
+    def __eq__(self, other: 'BotDip'):
+        return self.get_life_span == other.get_life_span
+
+    def __lt__(self, other: 'BotDip'):
+        return self.get_life_span < other.get_life_span
+
+    def __gt__(self, other: 'BotDip'):
+        return self.get_life_span > other.get_life_span
+
+    def __hash__(self):
+        return hash((self.__activated_price, self.__event_time))
+
     def should_buy(self, curr_price) -> bool:
         if self.has_bought_coin:
             return False
         return curr_price <= self.get_price_at_dip
 
-    def act_on_price(self, curr_price) -> None:
+    def act_on_price(self, curr_price, event_time) -> None:
+        if self.should_destroy:
+            return
+
         if not self.has_bought_coin:
-            if self.should_buy(curr_price):
-                self.buy()
+            if self.get_life_span == 0:
+                self.should_destroy = True
+
+            elif self.should_buy(curr_price):
+                self.buy(curr_price, event_time)
         else:
             reason = self.should_sell(curr_price)
             if reason is None:  # no reason to sell
                 pass
             else:
                 self.__status = reason
-                self.sell(reason)
+                self.sell(curr_price, event_time)
 
         self.__life_span -= 1
 
-    def buy(self) -> None:
+    def buy(self, buy_price: float, buy_time: int) -> None:
         self.__has_bought_coin = True
         self.__life_span = BotDip.LIFE_SPAN_ON_BUY
+        self.__buy_price = buy_price
+        self.__buy_time = buy_time
 
     def should_sell(self, curr_price):
         if curr_price <= self.get_stop_loss:
             return BotDip.REASON_STOP_LOSS
 
-        elif self.get_life_span <= 0:
+        elif self.get_life_span == 0:
             return BotDip.REASON_EXPIRED
 
         elif curr_price > self.get_price_at_dip:
@@ -75,6 +106,14 @@ class BotDip:
         else:
             return None
 
-    def sell(self, reason: str) -> None:
+    def sell(self, curr_price: float, sell_time: float) -> None:
         # update score
         self.__life_span = 0
+        self.should_destroy = True
+        self.__buy_sell_info = {
+            'buy_price': self.__buy_price,
+            'buy_time': self.__buy_time,
+            'sell_price': curr_price,
+            'sell_time': sell_time,
+            'status': self.get_status
+        }

@@ -31,6 +31,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="\bots\dip_strategy\bot_dip.py">
+          <value>
+            <Attribute>
+              <option name="separator" value=":" />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\bots\dip_strategy\test_bot_dip.py">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

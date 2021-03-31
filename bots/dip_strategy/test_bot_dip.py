@@ -4,97 +4,82 @@ from bot_dip import BotDip
 
 class BotDipTest(unittest.TestCase):
 
+    PRICE_TO_BUY = 1.20088999
+    EVENT_TIME = 123123112
+    PRICE_NOT_TO_BUY = 1.20598
+    STOP_LOSS_PRICE = 1.20015745
+    PRICE_TO_PROFIT = 1.2059593999999998
+    """ABOVE VALUES ARE BASED ON setUp()"""
+
+    def setUp(self) -> None:
+        curr_price: float = 1.20599
+        pct_drop_for_bid: float = 0.42289
+        pct_drop_for_activated_and_bid: float = 0.60
+        event_time: int = 123123123  # epoch
+        bid_lifespan: int = 3
+        stop_loss_pct: float = 0.061
+        sell_lifespan: int = 5
+
+        self.bot = BotDip(
+            curr_price,
+            pct_drop_for_bid,
+            pct_drop_for_activated_and_bid,
+            event_time,
+            bid_lifespan,
+            stop_loss_pct,
+            sell_lifespan
+        )
+
+    """BUYING START"""
+
     def test_bot_buy(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-        prices = [1.20548, 1.20547, 1.10548]
 
-        if len(prices) == 0:
-            raise RuntimeError("prices variable need to be set")
-
-        for buy_price in prices:
-            bot = BotDip(test_price, percentage_change, event_time)
-            bot.act_on_price(buy_price, event_time)
-            self.assertTrue(bot.has_bought_coin)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)
+        self.assertTrue(self.bot.has_bought_coin)
 
     def test_bot_not_buy(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
 
-        prices = [1.20549, 1.20550, 1.20559]
+        self.bot.act_on_price(BotDipTest.PRICE_NOT_TO_BUY, BotDipTest.EVENT_TIME)
+        self.assertFalse(self.bot.has_bought_coin)
 
-        if len(prices) == 0:
-            raise RuntimeError("prices variable need to be set")
-
-        for not_buy_price in prices:
-            bot = BotDip(test_price, percentage_change, event_time)
-            bot.act_on_price(not_buy_price, event_time)
-            self.assertFalse(bot.has_bought_coin)
+    """BUYING END"""
 
     """SELLING START"""
 
     def test_bot_should_sell_stop_loss(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-        prices = [1.20497, 1.20496, 1.20172]
 
-        for stop_loss_price in prices:
-            bot = BotDip(test_price, percentage_change, event_time)
-            bot.act_on_price(1.20548, event_time)  # buy
-            bot.act_on_price(stop_loss_price, event_time)
-            self.assertEqual(bot.get_status, BotDip.REASON_STOP_LOSS)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)  # buy
+        self.bot.act_on_price(BotDipTest.STOP_LOSS_PRICE, BotDipTest.EVENT_TIME)
+        self.assertEqual(self.bot.get_status, BotDip.REASON_STOP_LOSS)
 
     def test_bot_should_sell_profit(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-        prices = [1.20549, 1.20551, 1.20550]
 
-        for profit_price in prices:
-            bot = BotDip(test_price, percentage_change, event_time)
-            bot.act_on_price(1.20548, event_time)  # buy
-            bot.act_on_price(profit_price, event_time)
-            self.assertEqual(bot.get_status, BotDip.REASON_PROFIT)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)  # buy
+        self.bot.act_on_price(BotDipTest.PRICE_TO_PROFIT, BotDipTest.EVENT_TIME)
+        self.assertEqual(self.bot.get_status, BotDip.REASON_PROFIT)
 
     def test_bot_should_sell_expired(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
 
-        bot = BotDip(test_price, percentage_change, event_time)
-        bot.act_on_price(1.20548, event_time)  # buy
-        not_willing_to_sell_price = 1.20548
-        for i in range(BotDip.LIFE_SPAN_ON_BUY):  # loop backwards
-            bot.act_on_price(not_willing_to_sell_price, event_time)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)  # buy
 
-        self.assertEqual(bot.get_status, BotDip.REASON_EXPIRED)
+        for i in range(self.bot.get_life_span + 1):
+            # bot will not sell at this price
+            self.bot.act_on_price(BotDipTest.STOP_LOSS_PRICE + 0.00001, BotDipTest.EVENT_TIME)
+
+        self.assertEqual(self.bot.get_status, BotDip.REASON_EXPIRED)
 
     def test_bot_should_not_sell(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-        bot = BotDip(test_price, percentage_change, event_time)
-        bot.act_on_price(1.20548, event_time)  # buy
 
-        prices = [1.20548, 1.20547, 1.20546]
-
-        for not_sell_price in prices:
-            self.assertIsNone(bot.should_sell(not_sell_price))
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)
+        self.assertIsNone(self.bot.should_sell(BotDipTest.STOP_LOSS_PRICE + 0.00001))
 
     """SELLING END"""
 
-    def test_price_at_dip(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-        bot = BotDip(test_price, percentage_change, event_time)
-        self.assertEqual(bot.get_price_at_dip, 1.20548)
+    def test_price_to_bid(self):
+        self.assertEqual(self.bot.get_price_to_bid, round(1.20088998889, BotDip.BINANCE_FLOATING_POINT))
 
     """COMPARISON START"""
-
+    @unittest.skip("no comparisons needed for now")
     def test_bot_eq(self):
         test_price = 1.20599
         percentage_change = 0.042289
@@ -104,6 +89,7 @@ class BotDipTest(unittest.TestCase):
 
         self.assertEqual(b1, b2)
 
+    @unittest.skip("no comparisons needed for now")
     def test_bot_lt(self):
         test_price = 1.20599
         percentage_change = 0.042289
@@ -113,6 +99,7 @@ class BotDipTest(unittest.TestCase):
         greater.act_on_price(0.5, event_time)  # extends life span
         self.assertTrue(lesser < greater)
 
+    @unittest.skip("no comparisons needed for now")
     def test_bot_gt(self):
         test_price = 1.20599
         percentage_change = 0.042289
@@ -127,25 +114,14 @@ class BotDipTest(unittest.TestCase):
     """DESTROY START"""
 
     def test_bot_destroy_no_coin_purchased(self):
-        test_price = 1.20599
-        percentage_change = 0.042289
-        event_time = 123123123
-
-        not_buy_price = 1.20549
-        bot = BotDip(test_price, percentage_change, event_time)
-        bot.act_on_price(not_buy_price, event_time)  # not buy
-        bot.act_on_price(not_buy_price, event_time)  # not buy
-        self.assertTrue(bot.should_destroy)
+        for i in range(self.bot.get_life_span + 1):
+            self.bot.act_on_price(BotDipTest.PRICE_TO_BUY + 1, BotDipTest.EVENT_TIME)
+        self.assertTrue(self.bot.should_destroy)
 
     def test_bot_destroy_coin_sold(self):
-        test_price = 1.20599
-        price_willing_to_sell = test_price
-        percentage_change = 0.042289
-        event_time = 123123123
 
-        bot = BotDip(test_price, percentage_change, event_time)
-        bot.act_on_price(1.20548, event_time)
-        bot.act_on_price(price_willing_to_sell, event_time)
-        self.assertTrue(bot.should_destroy)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_BUY, BotDipTest.EVENT_TIME)
+        self.bot.act_on_price(BotDipTest.PRICE_TO_PROFIT, BotDipTest.EVENT_TIME)
+        self.assertTrue(self.bot.should_destroy)
 
     """DESTROY END"""

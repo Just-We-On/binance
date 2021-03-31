@@ -35,7 +35,7 @@ class BotManager:
         return self.__inactive_count
 
     def get_score(self):
-        return "wins: {0}, loss: {1}, inactive: {2}".format(self.__win_count, self.__lose_count, self.__inactive_count)
+        return "wins: {0}, loss: {1}, inactive: {2}, net score: {3}".format(self.__win_count, self.__lose_count, self.__inactive_count, self.__win_count - self.__lose_count)
 
     def __add_bot(self, bot: BotDip) -> None:
         self.__bots[bot] = bot
@@ -66,7 +66,6 @@ class BotManager:
             self.__inactive_count += 1
         else:
             raise RuntimeError("reason is None")
-
 
 
 
